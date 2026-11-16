@@ -86,3 +86,13 @@ coord-depth/
    /pm train/s01 데이터로 1-배치 오버피팅을 검증할 수 있는 미니 파이프라인과 모델을 구성해줘.
    ```
 3. 자세한 대화 팁과 워크플로우는 [TEAM_WORKFLOW_GUIDE.md](file:///c:/Users/tjdwn/OneDrive/Desktop/Development/coord-depth/TEAM_WORKFLOW_GUIDE.md)를 참조하세요.
+
+## 1-배치 오버피팅 검증
+
+`train/s01` 영상에서 MediaPipe Pose를 추출하고, 카메라 변환된 HumanSC3D GT와 Common 17 관절로 정렬한 뒤 Z residual 모델만 1개 배치에 과적합합니다.
+
+```powershell
+python scripts\overfit_one_batch.py --subject s01 --camera 50591643 --action 001
+```
+
+성공 조건은 최종 MSE `<= 1e-5 m²`, 역전파 NaN/Inf 없음, 최종 출력의 XY 변화 `0`입니다. 전체 데이터 학습 전 sanity check 용도이며 모델은 XY를 예측하지 않습니다.
