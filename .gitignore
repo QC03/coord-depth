@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+.venv/
+.vscode/
+.cache/
+*.mp4
+*.jpg
+*.pth
+*.onnx
+manifest.json
+
+train/*
