@@ -46,7 +46,15 @@
 
 ---
 
-## 5. 주요 파일 및 디렉터리 안내
+## 5. 가상환경 및 실행 환경 규칙 (.venv Standard)
+1. **파이썬 버전 고정**: 본 프로젝트의 표준 파이썬 환경은 **Python 3.10.x**입니다. (PyTorch 및 MediaPipe 휠 호환성 보장)
+2. **가상환경 격리**: 모든 파이썬 스크립트 실행 및 패키지 관리는 프로젝트 루트의 `.venv` 가상환경을 기준으로 합니다.
+3. **실행 명령 제안 규칙**: 터미널 명령어를 사용자에게 안내할 때는 반드시 `.venv`가 활성화된 상태를 전제하거나 `.venv\Scripts\python` 형태로 제안합니다.
+4. **의존성 동기화**: 프로젝트에 필요한 라이브러리는 `requirements.txt`에 명시된 버전을 준수합니다.
+
+---
+
+## 6. 주요 파일 및 디렉터리 안내
 - `specs/PROJECT_SPEC.md`: 프로젝트 명세서 (단일 진실 공급원)
 - `agents/`: 에이전트 역할 정의서 (`pm/`, `data_dept/`, `model_dept/`, `qa_dept/`)
 - `skills/`:
@@ -56,3 +64,4 @@
   - `anti_drift/gatekeeper_checklist.md`: 부장 승인 5대 체크리스트
   - `evaluation_metrics/metrics.py`: Z-MAE, MPJPE, PA-MPJPE 평가 함수
 - `train/`: HumanSC3D 데이터셋 (s01, s02, s03, s06)
+- `requirements.txt`: 가상환경 필수 의존성 패키지 목록
