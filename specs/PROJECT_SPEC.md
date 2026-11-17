@@ -53,24 +53,24 @@
 
 MediaPipe(33개 관절)와 HumanSC3D(25개 관절) 간의 공통 유효 관절을 추출하여 **공통 17개 관절 (COCO/H36M 표준 호환)**으로 정렬하여 학습 및 평가를 진행한다.
 
-| 공통 ID | 관절 명칭 (Joint Name) | MediaPipe Index | HumanSC3D Index (BODY_25) |
+| 공통 ID | 관절 명칭 (Joint Name) | MediaPipe Index | HumanSC3D Index (HumanSC3D-25) |
 |---|---|---|---|
 | 0 | Pelvis (Root) | Mid-Hip (calc: (23+24)/2) | 8 (MidHip) |
 | 1 | Right Hip | 24 | 9 |
 | 2 | Right Knee | 26 | 10 |
 | 3 | Right Ankle | 28 | 11 |
-| 4 | Left Hip | 23 | 12 |
-| 5 | Left Knee | 25 | 13 |
-| 6 | Left Ankle | 27 | 14 |
-| 7 | Spine / Thorax | Mid-Shoulder/Hip calc | 1 (Neck) |
-| 8 | Neck | Mid-Shoulder (calc: (11+12)/2) | 1 (Neck) |
-| 9 | Head / Nose | 0 (Nose) | 0 (Nose) |
-| 10 | Left Shoulder | 11 | 5 |
-| 11 | Left Elbow | 13 | 6 |
-| 12 | Left Wrist | 15 | 7 |
-| 13 | Right Shoulder | 12 | 2 |
-| 14 | Right Elbow | 14 | 3 |
-| 15 | Right Wrist | 16 | 4 |
+| 4 | Left Hip | 23 | 14 |
+| 5 | Left Knee | 25 | 15 |
+| 6 | Left Ankle | 27 | 16 |
+| 7 | Spine / Thorax | Mid-Shoulder/Hip calc | 7 (Spine) |
+| 8 | Neck | Mid-Shoulder (calc: (11+12)/2) | 0 (Neck) |
+| 9 | Head / Neck proxy | 0 (Nose) | 0 (Neck; no separate nose) |
+| 10 | Left Shoulder | 11 | 4 |
+| 11 | Left Elbow | 13 | 5 |
+| 12 | Left Wrist | 15 | 6 |
+| 13 | Right Shoulder | 12 | 1 |
+| 14 | Right Elbow | 14 | 2 |
+| 15 | Right Wrist | 16 | 3 |
 | 16 | Pelvis-Spine center | Midpoint (Pelvis-Neck) | - |
 
 *(세부 인덱스 매핑 코드는 `skills/joint_topology/joint_mapping.py` 참조)*

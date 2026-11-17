@@ -87,10 +87,10 @@ def align_mediapipe_joints(mp_landmarks: np.ndarray) -> np.ndarray:
 def align_humansc3d_joints(hsc_joints: np.ndarray) -> np.ndarray:
     """
     Convert HumanSC3D (N, 25, 3) or (25, 3) joints into Common 17 joints.
-    HumanSC3D uses BODY_25 format:
-    0: Nose, 1: Neck, 2: RShoulder, 3: RElbow, 4: RWrist,
-    5: LShoulder, 6: LElbow, 7: LWrist, 8: MidHip,
-    9: RHip, 10: RKnee, 11: RAnkle, 12: LHip, 13: LKnee, 14: LAnkle
+    HumanSC3D's first 17 joints use its dataset topology:
+    0: Neck, 1-3: right shoulder/elbow/wrist, 4-6: left shoulder/elbow/wrist,
+    7: Spine, 8: MidHip, 9-11: right hip/knee/ankle,
+    14-16: left hip/knee/ankle. The remaining joints are auxiliary markers.
     """
     is_batched = hsc_joints.ndim == 3
     if not is_batched:
@@ -99,27 +99,27 @@ def align_humansc3d_joints(hsc_joints: np.ndarray) -> np.ndarray:
     B = hsc_joints.shape[0]
     out = np.zeros((B, 17, 3), dtype=np.float32)
 
-    pelvis = hsc_joints[:, 8] # MidHip
-    neck = hsc_joints[:, 1]   # Neck
+    pelvis = hsc_joints[:, 8]  # MidHip
+    spine = hsc_joints[:, 7]  # Spine
+    neck = hsc_joints[:, 0]  # Neck
     thorax = (neck * 0.7 + pelvis * 0.3)
-    spine = (pelvis * 0.6 + thorax * 0.4)
 
     out[:, 0] = pelvis
     out[:, 1] = hsc_joints[:, 9]  # r_hip
     out[:, 2] = hsc_joints[:, 10] # r_knee
     out[:, 3] = hsc_joints[:, 11] # r_ank
-    out[:, 4] = hsc_joints[:, 12] # l_hip
-    out[:, 5] = hsc_joints[:, 13] # l_knee
-    out[:, 6] = hsc_joints[:, 14] # l_ank
+    out[:, 4] = hsc_joints[:, 14] # l_hip
+    out[:, 5] = hsc_joints[:, 15] # l_knee
+    out[:, 6] = hsc_joints[:, 16] # l_ank
     out[:, 7] = spine
     out[:, 8] = neck
-    out[:, 9] = hsc_joints[:, 0]  # nose
-    out[:, 10] = hsc_joints[:, 5] # l_sh
-    out[:, 11] = hsc_joints[:, 6] # l_el
-    out[:, 12] = hsc_joints[:, 7] # l_wr
-    out[:, 13] = hsc_joints[:, 2] # r_sh
-    out[:, 14] = hsc_joints[:, 3] # r_el
-    out[:, 15] = hsc_joints[:, 4] # r_wr
+    out[:, 9] = neck  # HumanSC3D has no separate nose joint
+    out[:, 10] = hsc_joints[:, 4] # l_sh
+    out[:, 11] = hsc_joints[:, 5] # l_el
+    out[:, 12] = hsc_joints[:, 6] # l_wr
+    out[:, 13] = hsc_joints[:, 1] # r_sh
+    out[:, 14] = hsc_joints[:, 2] # r_el
+    out[:, 15] = hsc_joints[:, 3] # r_wr
     out[:, 16] = thorax
 
     return out if is_batched else out[0]
