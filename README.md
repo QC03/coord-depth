@@ -87,3 +87,13 @@ python scripts\overfit_one_batch.py --subject s01 --camera 50591643 --action 001
 ```
 
 성공 조건은 최종 MSE `<= 1e-5 m²`, 역전파 NaN/Inf 없음, 최종 출력의 XY 변화 `0`입니다. 전체 데이터 학습 전 sanity check 용도이며 모델은 XY를 예측하지 않습니다.
+
+## 본 학습 (Z-MAE + Bone Length Loss)
+
+캐시된 MediaPipe Common-17과 카메라 좌표계 HumanSC3D GT를 사용해 subject 단위로 학습합니다.
+
+```powershell
+python scripts\train_z_refinement.py --train-subjects s01 s02 --val-subjects s03 --checkpoint-dir checkpoints
+```
+
+Best 모델은 validation Z-MAE 기준으로 `checkpoints\best_model.pth`에 저장되고, 마지막 epoch는 `checkpoints\latest.pth`에 저장됩니다. 입력 `(B,17,3)`의 XY는 MediaPipe 값을 그대로 유지하며 모델 출력은 Z residual `(B,17,1)`뿐입니다.
