@@ -17,7 +17,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from skills.coordinate_transform.coord_utils import (  # noqa: E402
-    compute_bone_lengths,
     normalize_root_relative,
     world_to_camera_frame,
 )
@@ -25,6 +24,11 @@ from skills.evaluation_metrics.metrics import compute_z_mae  # noqa: E402
 from skills.joint_topology.joint_mapping import (  # noqa: E402
     align_humansc3d_joints,
     get_skeleton_edges,
+)
+from src.models.losses import (  # noqa: E402
+    bone_length_loss,
+    depth_separation_loss,
+    joint_angle_limit_loss,
 )
 
 
@@ -108,13 +112,14 @@ def loss_components(
     target_xyz: torch.Tensor,
     edges: list[tuple[int, int]],
     bone_weight: float,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     refined_xyz = torch.cat((inputs[:, :, :2], pred_z), dim=-1)
     z_mae = torch.mean(torch.abs(pred_z - target_xyz[:, :, 2:3]))
-    pred_bones = compute_bone_lengths(refined_xyz, edges)
-    target_bones = compute_bone_lengths(target_xyz, edges)
-    bone_loss = torch.mean(torch.abs(pred_bones - target_bones))
-    return z_mae + bone_weight * bone_loss, z_mae, bone_loss
+    bone_loss = bone_length_loss(refined_xyz, target_xyz, edges)
+    depth_loss = depth_separation_loss(refined_xyz, target_xyz)
+    angle_loss = joint_angle_limit_loss(refined_xyz)
+    total = z_mae + bone_weight * bone_loss + 0.1 * depth_loss + 0.05 * angle_loss
+    return total, z_mae, bone_loss, depth_loss, angle_loss
 
 
 def run_epoch(
@@ -125,10 +130,10 @@ def run_epoch(
     bone_weight: float,
     optimizer: torch.optim.Optimizer | None,
     clip_norm: float,
-) -> tuple[float, float, float]:
+) -> tuple[float, float, float, float, float]:
     training = optimizer is not None
     model.train(training)
-    total_loss = total_z = total_bone = total_count = 0.0
+    total_loss = total_z = total_bone = total_depth = total_angle = total_count = 0.0
     for inputs, target_xyz in loader:
         inputs = inputs.to(device)
         target_xyz = target_xyz.to(device)
@@ -137,7 +142,7 @@ def run_epoch(
         with torch.set_grad_enabled(training):
             baseline_z = inputs[:, :, 2:3]
             pred_z = baseline_z + model(inputs)
-            loss, z_mae, bone_loss = loss_components(
+            loss, z_mae, bone_loss, depth_loss, angle_loss = loss_components(
                 pred_z, inputs, target_xyz, edges, bone_weight
             )
             if not torch.isfinite(loss):
@@ -150,8 +155,16 @@ def run_epoch(
         total_loss += float(loss.item()) * count
         total_z += float(z_mae.item()) * count
         total_bone += float(bone_loss.item()) * count
+        total_depth += float(depth_loss.item()) * count
+        total_angle += float(angle_loss.item()) * count
         total_count += count
-    return total_loss / total_count, total_z / total_count, total_bone / total_count
+    return (
+        total_loss / total_count,
+        total_z / total_count,
+        total_bone / total_count,
+        total_depth / total_count,
+        total_angle / total_count,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -209,19 +222,21 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
     )
 
     for epoch in range(1, args.epochs + 1):
-        train_loss, train_z, train_bone = run_epoch(
+        train_loss, train_z, train_bone, train_depth, train_angle = run_epoch(
             model, train_loader, device, edges, args.bone_weight, optimizer, args.clip_norm
         )
         with torch.no_grad():
-            val_loss, val_z, val_bone = run_epoch(
+            val_loss, val_z, val_bone, val_depth, val_angle = run_epoch(
                 model, val_loader, device, edges, args.bone_weight, None, args.clip_norm
             )
         scheduler.step()
         print(
             f"epoch={epoch:03d} train_loss={train_loss:.6f} "
             f"train_z_mae_mm={train_z * 1000:.3f} train_bone={train_bone:.6f} "
+            f"train_depth={train_depth:.6f} train_angle={train_angle:.6f} "
             f"val_loss={val_loss:.6f} val_z_mae_mm={val_z * 1000:.3f} "
-            f"val_bone={val_bone:.6f}",
+            f"val_bone={val_bone:.6f} val_depth={val_depth:.6f} "
+            f"val_angle={val_angle:.6f}",
             flush=True,
         )
         state = {

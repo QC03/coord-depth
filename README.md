@@ -122,3 +122,7 @@ python scripts\inference.py --input path\to\new_video.mp4 --output-video results
 ```
 
 NPZ의 `refined_xyz` 형상은 `(frames,17,3)`이며 좌표는 `[X_mp, Y_mp, Z_refined]`(미터), `valid_mask`는 MediaPipe 검출 성공 여부입니다.
+
+추론 영상의 관절 색상은 머리(주황), 양 손목(파랑), 골반/척추/흉곽(보라), 나머지(초록)로 고정되며 연결선도 해당 신체 구간 색상을 따릅니다.
+
+손실함수에는 뼈 길이 일관성, XY 투영이 짧을 때 필요한 Z 분리, 그리고 세 관절로 관찰 가능한 굽힘각 제한이 포함됩니다. 각 제한은 임상 정상 ROM 참고값을 보수적으로 적용합니다(경추 90°, 고관절 120°, 팔꿈치/무릎 150°). 참고: [CDC Normal Joint Range of Motion Study](https://archive.cdc.gov/www_cdc_gov/ncbddd/jointrom/index.html), [AAOS ROM 요약](https://goniometer.io/range-of-motion). 축 회전처럼 세 점만으로 관찰할 수 없는 자유도는 이 손실에서 직접 제한하지 않습니다.

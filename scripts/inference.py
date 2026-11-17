@@ -22,6 +22,34 @@ from skills.joint_topology.joint_mapping import (  # noqa: E402
 from skills.coordinate_transform.coord_utils import normalize_root_relative  # noqa: E402
 
 
+JOINT_COLORS = {
+    "head": (0, 165, 255),      # orange (BGR)
+    "wrist": (255, 0, 0),       # blue (BGR)
+    "waist": (128, 0, 128),     # purple (BGR)
+    "other": (0, 180, 0),       # green (BGR)
+}
+
+
+def joint_color(index: int) -> tuple[int, int, int]:
+    if index == 9:
+        return JOINT_COLORS["head"]
+    if index in (12, 15):
+        return JOINT_COLORS["wrist"]
+    if index in (0, 7, 16):
+        return JOINT_COLORS["waist"]
+    return JOINT_COLORS["other"]
+
+
+def edge_color(left: int, right: int) -> tuple[int, int, int]:
+    if left in (0, 7, 16) or right in (0, 7, 16):
+        return JOINT_COLORS["waist"]
+    if left == 9 or right == 9:
+        return JOINT_COLORS["head"]
+    if left in (12, 15) or right in (12, 15):
+        return JOINT_COLORS["wrist"]
+    return JOINT_COLORS["other"]
+
+
 def load_model(checkpoint_path: Path) -> ZResidualMLP:
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
@@ -72,9 +100,9 @@ def draw_2d_overlay(frame: np.ndarray, common17: np.ndarray | None) -> np.ndarra
         px = int(width * (0.5 + float(x) * 0.8))
         py = int(height * (0.5 + float(y) * 0.8))
         points[index] = (px, py)
-        cv2.circle(output, (px, py), 4, (0, 200, 255), -1)
+        cv2.circle(output, (px, py), 4, joint_color(index), -1)
     for left, right in get_skeleton_edges():
-        cv2.line(output, points[left], points[right], (0, 220, 0), 2)
+        cv2.line(output, points[left], points[right], edge_color(left, right), 2)
     cv2.putText(
         output,
         "MediaPipe XY (fixed) + refined Z",
@@ -118,9 +146,9 @@ def draw_3d_skeleton(
         py = int(center_y + float(y) * scale * perspective)
         projected[index] = (px, py)
     for left, right in get_skeleton_edges():
-        cv2.line(canvas, projected[left], projected[right], (255, 160, 0), 2)
+        cv2.line(canvas, projected[left], projected[right], edge_color(left, right), 2)
     for index, point in projected.items():
-        cv2.circle(canvas, point, 4, (255, 220, 0), -1)
+        cv2.circle(canvas, point, 4, joint_color(index), -1)
         if index == 0:
             cv2.circle(canvas, point, 7, (0, 0, 255), 2)
     cv2.putText(
@@ -172,9 +200,9 @@ def draw_axis_projection(
             int(center_y - float(vertical) * scale),
         )
     for left, right in get_skeleton_edges():
-        cv2.line(canvas, projected[left], projected[right], (180, 180, 180), 2)
-    for point in projected.values():
-        cv2.circle(canvas, point, 4, (0, 220, 255), -1)
+        cv2.line(canvas, projected[left], projected[right], edge_color(left, right), 2)
+    for index, point in projected.items():
+        cv2.circle(canvas, point, 4, joint_color(index), -1)
     cv2.putText(
         canvas,
         f"{title} ({horizontal_label},{vertical_label})",
