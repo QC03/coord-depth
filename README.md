@@ -97,3 +97,11 @@ python scripts\train_z_refinement.py --train-subjects s01 s02 --val-subjects s03
 ```
 
 Best 모델은 validation Z-MAE 기준으로 `checkpoints\best_model.pth`에 저장되고, 마지막 epoch는 `checkpoints\latest.pth`에 저장됩니다. 입력 `(B,17,3)`의 XY는 MediaPipe 값을 그대로 유지하며 모델 출력은 Z residual `(B,17,1)`뿐입니다.
+
+## QA: s06 테스트 평가
+
+```powershell
+python scripts\evaluate_s06.py --checkpoint checkpoints\best_model.pth --results-dir results
+```
+
+전체 s06의 baseline/refined Z-MAE와 개선율은 `results\s06_metrics.json`, 대표 3D 비교 플롯은 `results\visualizations\s06_skeleton_comparison.png`에 생성됩니다.

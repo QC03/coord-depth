@@ -1,0 +1,12 @@
+{
+  "subject": "s06",
+  "frames": 226215,
+  "checkpoint": "checkpoints\\best_model.pth",
+  "baseline_z_mae_mm": 170.9272563457489,
+  "refined_z_mae_mm": 115.10549485683441,
+  "improvement_percent": 32.65819781018372,
+  "visualization": "results\\visualizations\\s06_skeleton_comparison.png",
+  "visualization_camera": "50591643",
+  "visualization_action": "001",
+  "visualization_frame": 0
+}
