@@ -8,6 +8,7 @@
 
 ## 2. 핵심 책임 (Core Responsibilities)
 1. **복합 손실함수 설계**:
+   - `src/models/losses.py`에 손실 함수 모듈 작성:
    - **Primary Loss ($\mathcal{L}_{depth}$)**: Smooth L1 Loss 또는 L1 Loss on Z:
      $$\mathcal{L}_{depth} = \frac{1}{J}\sum_{j=1}^J \text{SmoothL1}(Z_j^{pred}, Z_j^{gt})$$
    - **Full 3D Position Loss ($\mathcal{L}_{3D}$)**:

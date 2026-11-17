@@ -16,7 +16,7 @@
 2. **시점 회전 및 깊이 왜곡 검증**:
    - 정면(Front View, XY평면)뿐만 아니라 측면(Side View, ZY평면) 및 상단(Top View, XZ평면) 시점을 함께 렌더링하여 Z축 깊이 정밀도 집중 확인.
 3. **Worst-K Failure Case 분석**:
-   - Z-MAE 오차가 가장 큰 상위 5개 프레임을 자동으로 찾아 이미지 및 3D 플롯으로 저장 (`results/failures/worst_*.png`).
+   - Z-MAE 오차가 가장 큰 상위 5개 프레임을 자동으로 찾아 이미지 및 3D 플롯으로 저장 (`results/visualizations/worst_*.png`).
    - 오차 원인(자기 가림(self-occlusion), 특이 동작 등)을 1줄 요약 태깅.
 
 ## 3. 적용 스킬 (Skills)

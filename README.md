@@ -15,44 +15,35 @@ coord-depth/
 │       ├── dept-data.prompt.md
 │       ├── dept-model.prompt.md
 │       └── dept-qa.prompt.md
+├── src/                             # 메인 모듈형 소스 코드
+│   ├── data/                        # Dataset, DataLoader, 캐시 파서
+│   ├── models/                      # Z-Refinement 신경망 모델 및 복합 손실함수
+│   ├── training/                    # Trainer 클래스 및 학습 파이프라인
+│   └── evaluation/                  # 벤치마크 평가 및 시각화 모듈
+├── scripts/                         # 독립 실행형 스크립트 및 1-배치 오버피팅
+│   ├── overfit_one_batch.py
+│   └── cache_mediapipe_landmarks.py
+├── checkpoints/                     # 모델 가중치 저장소 (*.pth)
+├── results/                         # 평가 보고서 및 3D 플롯 결과
+│   ├── metrics/
+│   └── visualizations/
 ├── agents/                          # 계층적 에이전트 역할 정의서
 │   ├── pm/
-│   │   └── project_manager.md       # 총괄 프로젝트 매니저 (PM)
-│   ├── data_dept/                   # 데이터 엔지니어링 부서
-│   │   ├── manager.md               # 데이터 부장 (게이트키퍼)
-│   │   ├── humansc3d_specialist.md  # HumanSC3D 파싱 및 GT 변환
-│   │   ├── mediapipe_specialist.md  # MediaPipe 랜드마크 추출
-│   │   └── dataset_pipeline_engineer.md # Dataset 및 DataLoader 구축
-│   ├── model_dept/                  # 모델 및 연구 부서
-│   │   ├── manager.md               # 모델 부장 (게이트키퍼)
-│   │   ├── architecture_specialist.md # Residual Z 신경망 설계
-│   │   ├── loss_optimization_specialist.md # Z-MAE, MPJPE, Bone Loss
-│   │   └── training_engineer.md     # 학습 루프 및 1-배치 오버피팅
-│   └── qa_dept/                     # QA 및 검증 부서
-│       ├── manager.md               # QA 부장 (게이트키퍼)
-│       ├── benchmark_specialist.md  # Baseline vs Hybrid 정량 평가
-│       ├── visualization_specialist.md # 3D 스켈레톤 비교 렌더링
-│       └── sanity_auditor.md        # 산으로 가지 않게 하는 무결성 감사관
+│   ├── data_dept/
+│   ├── model_dept/
+│   └── qa_dept/
 ├── skills/                          # 재사용 가능한 도메인 스킬 및 코드
-│   ├── joint_topology/              # MediaPipe 33 <-> HumanSC3D 25 매핑
-│   │   ├── SKILL.md
-│   │   └── joint_mapping.py
-│   ├── coordinate_transform/        # 카메라 좌표계 변환 및 Root-relative 정규화
-│   │   ├── SKILL.md
-│   │   └── coord_utils.py
-│   ├── token_saver/                 # 토큰 절약 보고 템플릿
-│   │   ├── SKILL.md
-│   │   └── report_templates.md
-│   ├── anti_drift/                  # 이탈 방지 헌법 및 부장 체크리스트
-│   │   ├── SKILL.md
-│   │   └── gatekeeper_checklist.md
-│   └── evaluation_metrics/          # Z-MAE, MPJPE, PA-MPJPE 계산
-│       ├── SKILL.md
-│       └── metrics.py
+│   ├── joint_topology/
+│   ├── coordinate_transform/
+│   ├── token_saver/
+│   ├── anti_drift/
+│   └── evaluation_metrics/
 ├── specs/
 │   └── PROJECT_SPEC.md              # 단일 진실 공급원 (SSOT)
-├── train/                           # HumanSC3D 데이터셋 (s01, s02, s03, s06)
-├── TEAM_WORKFLOW_GUIDE.md           # Copilot 실전 사용 매뉴얼
+├── docs/
+│   └── TEAM_WORKFLOW_GUIDE.md       # 에이전트 협업 실전 매뉴얼
+├── train/                           # HumanSC3D 데이터셋 및 mediapipe_cache
+├── requirements.txt                 # 파이썬 의존성 패키지 목록
 └── README.md
 ```
 
@@ -85,7 +76,7 @@ coord-depth/
    ```
    /pm train/s01 데이터로 1-배치 오버피팅을 검증할 수 있는 미니 파이프라인과 모델을 구성해줘.
    ```
-3. 자세한 대화 팁과 워크플로우는 [TEAM_WORKFLOW_GUIDE.md](file:///c:/Users/tjdwn/OneDrive/Desktop/Development/coord-depth/TEAM_WORKFLOW_GUIDE.md)를 참조하세요.
+3. 자세한 대화 팁과 워크플로우는 [docs/TEAM_WORKFLOW_GUIDE.md](file:///c:/Users/tjdwn/OneDrive/Desktop/Development/coord-depth/docs/TEAM_WORKFLOW_GUIDE.md)를 참조하세요.
 
 ## 1-배치 오버피팅 검증
 

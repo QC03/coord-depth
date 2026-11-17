@@ -19,7 +19,7 @@
      - **PA-MPJPE (mm)**: 자세 형상 오차
      - **PCK@150mm (%)**: 정답률
 3. **결과 리포트 생성**:
-   - `results/benchmark_report.json` 및 간결한 마크다운 비교표 산출.
+   - `results/metrics/benchmark_report.json` 및 간결한 마크다운 비교표 산출.
 
 ## 3. 적용 스킬 (Skills)
 - `skills/evaluation_metrics/`: 3D 포즈 평가 공식 적용

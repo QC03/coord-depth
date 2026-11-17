@@ -1,15 +1,26 @@
+# Environment & Cache
 .env
+.venv/
+.cache/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 
-.venv/
-.vscode/
-.cache/
+# Large Datasets & Media
+train/*
 *.mp4
 *.jpg
+*.png
+*.npz
+
+# Model Weights & Artefacts
+checkpoints/*
+!checkpoints/.gitkeep
 *.pth
 *.onnx
-manifest.json
 
-train/*
+# Results & Reports
+results/visualizations/*
+!results/visualizations/.gitkeep
+results/metrics/*
+!results/metrics/.gitkeep

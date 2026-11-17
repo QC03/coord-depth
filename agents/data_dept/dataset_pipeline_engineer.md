@@ -17,7 +17,7 @@
      - **Test Set**: `s06`
    - 절대 프레임 단위 random shuffle split을 하지 않음!
 3. **PyTorch Dataset 및 DataLoader 클래스 구현**:
-   - `PoseDepthDataset(torch.utils.data.Dataset)` 작성.
+   - `src/data/dataset.py`에 `PoseDepthDataset(torch.utils.data.Dataset)` 작성.
    - 배치 생성, 텐서 변환(`torch.float32`), GPU 전송 최적화 (`pin_memory=True`, `num_workers=4`).
 4. **1-배치 Sanity Check 제공**:
    - 1개의 작은 미니배치(예: batch_size=16)를 즉시 반환하는 `get_sanity_batch()` 메서드 제공.

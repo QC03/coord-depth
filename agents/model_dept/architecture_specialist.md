@@ -8,6 +8,7 @@
 
 ## 2. 핵심 책임 (Core Responsibilities)
 1. **모델 아키텍처 설계 및 구현**:
+   - `src/models/depth_refiner.py`에 신경망 클래스 작성:
    - **Baseline Architecture: Residual Depth MLP**:
      - 관절 좌표 `(B, 17, 3)`을 `(B, 51)`로 평탄화 후 Residual Block(Linear + LayerNorm + ReLU + Dropout) 통과.
      - 최종 출력층에서 `(B, 17, 1)` 크기의 $\Delta Z$ 또는 $Z_{refined}$ 출력.

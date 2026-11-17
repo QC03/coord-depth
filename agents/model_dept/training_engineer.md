@@ -11,7 +11,7 @@
    - 전체 데이터 학습을 시작하기 전, 반드시 단 1개 배치(16개 샘플)로 100 epoch 내에 Loss가 0에 가깝게 떨어지는지 검증하는 스크립트 작성 및 실행.
    - 실패 시 모델 부장에게 즉시 보고하고 전체 학습 진입을 차단.
 2. **풀 파이프라인 학습 루프 구현**:
-   - `Trainer` 클래스 작성:
+   - `src/training/trainer.py`에 `Trainer` 클래스 작성:
      - Mixed Precision (`torch.cuda.amp.autocast`) 지원
      - Gradient Clipping 적용
      - Validation 에포크마다 Validation Z-MAE 및 MPJPE 계산

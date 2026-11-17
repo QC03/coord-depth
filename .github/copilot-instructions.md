@@ -54,14 +54,29 @@
 
 ---
 
-## 6. 주요 파일 및 디렉터리 안내
+## 6. 소스 코드 아키텍처 및 디렉터리 배치 원칙
+1. **모듈형 소스 코드 (`src/`)**: 
+   - 일회성 검증 스크립트는 `scripts/`에 두되, 실제 파이프라인과 모델 코드는 반드시 `src/` 하위에 배치합니다:
+     - `src/data/`: Dataset, DataLoader, 캐시 로더
+     - `src/models/`: Residual Z-Refiner 아키텍처 및 손실 함수(Losses)
+     - `src/training/`: Trainer 클래스 및 학습 루프
+     - `src/evaluation/`: 벤치마크 평가 및 시각화 모듈
+2. **산출물 격리**:
+   - 학습 가중치는 반드시 `checkpoints/`에 저장 (`best_model.pth` 등)
+   - 평가 지표 및 3D 시각화 플롯은 `results/metrics/`, `results/visualizations/`에 저장
+3. **가이드 문서**:
+   - 워크플로우 상세 매뉴얼은 `docs/TEAM_WORKFLOW_GUIDE.md`를 참조합니다.
+
+---
+
+## 7. 주요 파일 및 디렉터리 안내
 - `specs/PROJECT_SPEC.md`: 프로젝트 명세서 (단일 진실 공급원)
+- `src/`: 메인 소스 코드 모듈 (`data/`, `models/`, `training/`, `evaluation/`)
+- `scripts/`: 독립 실행형 스크립트 및 1-배치 오버피팅 검증
 - `agents/`: 에이전트 역할 정의서 (`pm/`, `data_dept/`, `model_dept/`, `qa_dept/`)
-- `skills/`:
-  - `joint_topology/joint_mapping.py`: MediaPipe 33 <-> HumanSC3D 25 <-> Common 17 관절 매핑
-  - `coordinate_transform/coord_utils.py`: 월드->카메라 좌표 변환, Pelvis 상대좌표화
-  - `token_saver/report_templates.md`: 압축 보고서 템플릿
-  - `anti_drift/gatekeeper_checklist.md`: 부장 승인 5대 체크리스트
-  - `evaluation_metrics/metrics.py`: Z-MAE, MPJPE, PA-MPJPE 평가 함수
-- `train/`: HumanSC3D 데이터셋 (s01, s02, s03, s06)
+- `skills/`: 도메인 핵심 스킬 (`joint_topology/`, `coordinate_transform/`, `evaluation_metrics/`, 등)
+- `docs/`: 워크플로우 및 가이드 문서 (`docs/TEAM_WORKFLOW_GUIDE.md`)
+- `checkpoints/`: 모델 가중치 저장소
+- `results/`: 평가 결과 및 시각화 저장소
+- `train/`: HumanSC3D 데이터셋 및 MediaPipe 캐시
 - `requirements.txt`: 가상환경 필수 의존성 패키지 목록
