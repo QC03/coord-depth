@@ -5,10 +5,9 @@ MediaPipe 33 landmarks <-> HumanSC3D 25 joints <-> Common 17 joints alignment.
 
 from typing import List, Tuple
 import numpy as np
-import torch
 
 COMMON_JOINT_NAMES = [
-    "Pelvis",         # 0
+    "Pelvis",         # 0: Root
     "Right_Hip",      # 1
     "Right_Knee",     # 2
     "Right_Ankle",    # 3
@@ -28,19 +27,18 @@ COMMON_JOINT_NAMES = [
 ]
 
 SKELETON_EDGES: List[Tuple[int, int]] = [
-    (0, 1), (1, 2), (2, 3),    # Right Leg
-    (0, 4), (4, 5), (5, 6),    # Left Leg
-    (0, 7), (7, 16), (16, 8),  # Spine / Torso
-    (8, 9),                    # Head
-    (16, 10), (10, 11), (11, 12), # Left Arm
-    (16, 13), (13, 14), (14, 15)  # Right Arm
+    (0, 1), (1, 2), (2, 3),        # Right Leg
+    (0, 4), (4, 5), (5, 6),        # Left Leg
+    (0, 7), (7, 16), (16, 8),      # Spine / Torso
+    (8, 9),                        # Head
+    (16, 10), (10, 11), (11, 12),  # Left Arm
+    (16, 13), (13, 14), (14, 15)   # Right Arm
 ]
 
 
 def align_mediapipe_joints(mp_landmarks: np.ndarray) -> np.ndarray:
     """
     Convert MediaPipe (N, 33, 3) or (33, 3) landmarks into Common 17 joints.
-    Calculates virtual joints (Pelvis, Spine, Neck, Thorax) from existing landmarks.
     """
     is_batched = mp_landmarks.ndim == 3
     if not is_batched:
@@ -49,10 +47,6 @@ def align_mediapipe_joints(mp_landmarks: np.ndarray) -> np.ndarray:
     B = mp_landmarks.shape[0]
     out = np.zeros((B, 17, 3), dtype=np.float32)
 
-    # MediaPipe Indices:
-    # 0: nose, 11: l_sh, 12: r_sh, 13: l_el, 14: r_el, 15: l_wr, 16: r_wr
-    # 23: l_hip, 24: r_hip, 25: l_knee, 26: r_knee, 27: l_ank, 28: r_ank
-
     l_hip = mp_landmarks[:, 23]
     r_hip = mp_landmarks[:, 24]
     pelvis = (l_hip + r_hip) * 0.5
@@ -60,25 +54,25 @@ def align_mediapipe_joints(mp_landmarks: np.ndarray) -> np.ndarray:
     l_sh = mp_landmarks[:, 11]
     r_sh = mp_landmarks[:, 12]
     neck = (l_sh + r_sh) * 0.5
-    thorax = (neck * 0.7 + pelvis * 0.3)
-    spine = (pelvis * 0.6 + thorax * 0.4)
+    thorax = neck * 0.7 + pelvis * 0.3
+    spine = pelvis * 0.6 + thorax * 0.4
 
     out[:, 0] = pelvis
     out[:, 1] = r_hip
-    out[:, 2] = mp_landmarks[:, 26] # r_knee
-    out[:, 3] = mp_landmarks[:, 28] # r_ank
+    out[:, 2] = mp_landmarks[:, 26] # Right Knee
+    out[:, 3] = mp_landmarks[:, 28] # Right Ankle
     out[:, 4] = l_hip
-    out[:, 5] = mp_landmarks[:, 25] # l_knee
-    out[:, 6] = mp_landmarks[:, 27] # l_ank
+    out[:, 5] = mp_landmarks[:, 25] # Left Knee
+    out[:, 6] = mp_landmarks[:, 27] # Left Ankle
     out[:, 7] = spine
     out[:, 8] = neck
-    out[:, 9] = mp_landmarks[:, 0]  # nose / head
+    out[:, 9] = mp_landmarks[:, 0]  # Nose / Head
     out[:, 10] = l_sh
-    out[:, 11] = mp_landmarks[:, 13] # l_el
-    out[:, 12] = mp_landmarks[:, 15] # l_wr
+    out[:, 11] = mp_landmarks[:, 13] # Left Elbow
+    out[:, 12] = mp_landmarks[:, 15] # Left Wrist
     out[:, 13] = r_sh
-    out[:, 14] = mp_landmarks[:, 14] # r_el
-    out[:, 15] = mp_landmarks[:, 16] # r_wr
+    out[:, 14] = mp_landmarks[:, 14] # Right Elbow
+    out[:, 15] = mp_landmarks[:, 16] # Right Wrist
     out[:, 16] = thorax
 
     return out if is_batched else out[0]
@@ -87,10 +81,16 @@ def align_mediapipe_joints(mp_landmarks: np.ndarray) -> np.ndarray:
 def align_humansc3d_joints(hsc_joints: np.ndarray) -> np.ndarray:
     """
     Convert HumanSC3D (N, 25, 3) or (25, 3) joints into Common 17 joints.
-    HumanSC3D's first 17 joints use its dataset topology:
-    0: Neck, 1-3: right shoulder/elbow/wrist, 4-6: left shoulder/elbow/wrist,
-    7: Spine, 8: MidHip, 9-11: right hip/knee/ankle,
-    14-16: left hip/knee/ankle. The remaining joints are auxiliary markers.
+    HumanSC3D 25 joints topology (H36M standard):
+      0: Pelvis
+      1, 2, 3: Left Hip, Left Knee, Left Ankle
+      4, 5, 6: Right Hip, Right Knee, Right Ankle
+      7: Spine
+      8: Thorax
+      9: Neck
+      10: Head
+      11, 12, 13: Left Shoulder, Left Elbow, Left Wrist
+      14, 15, 16: Right Shoulder, Right Elbow, Right Wrist
     """
     is_batched = hsc_joints.ndim == 3
     if not is_batched:
@@ -99,27 +99,28 @@ def align_humansc3d_joints(hsc_joints: np.ndarray) -> np.ndarray:
     B = hsc_joints.shape[0]
     out = np.zeros((B, 17, 3), dtype=np.float32)
 
-    pelvis = hsc_joints[:, 8]  # MidHip
-    spine = hsc_joints[:, 7]  # Spine
-    neck = hsc_joints[:, 0]  # Neck
-    thorax = (neck * 0.7 + pelvis * 0.3)
+    pelvis = hsc_joints[:, 0]
+    spine = hsc_joints[:, 7]
+    thorax = hsc_joints[:, 8]
+    neck = hsc_joints[:, 9]
+    head = hsc_joints[:, 10]
 
     out[:, 0] = pelvis
-    out[:, 1] = hsc_joints[:, 9]  # r_hip
-    out[:, 2] = hsc_joints[:, 10] # r_knee
-    out[:, 3] = hsc_joints[:, 11] # r_ank
-    out[:, 4] = hsc_joints[:, 14] # l_hip
-    out[:, 5] = hsc_joints[:, 15] # l_knee
-    out[:, 6] = hsc_joints[:, 16] # l_ank
+    out[:, 1] = hsc_joints[:, 4]   # Right Hip
+    out[:, 2] = hsc_joints[:, 5]   # Right Knee
+    out[:, 3] = hsc_joints[:, 6]   # Right Ankle
+    out[:, 4] = hsc_joints[:, 1]   # Left Hip
+    out[:, 5] = hsc_joints[:, 2]   # Left Knee
+    out[:, 6] = hsc_joints[:, 3]   # Left Ankle
     out[:, 7] = spine
     out[:, 8] = neck
-    out[:, 9] = neck  # HumanSC3D has no separate nose joint
-    out[:, 10] = hsc_joints[:, 4] # l_sh
-    out[:, 11] = hsc_joints[:, 5] # l_el
-    out[:, 12] = hsc_joints[:, 6] # l_wr
-    out[:, 13] = hsc_joints[:, 1] # r_sh
-    out[:, 14] = hsc_joints[:, 2] # r_el
-    out[:, 15] = hsc_joints[:, 3] # r_wr
+    out[:, 9] = head
+    out[:, 10] = hsc_joints[:, 11] # Left Shoulder
+    out[:, 11] = hsc_joints[:, 12] # Left Elbow
+    out[:, 12] = hsc_joints[:, 13] # Left Wrist
+    out[:, 13] = hsc_joints[:, 14] # Right Shoulder
+    out[:, 14] = hsc_joints[:, 15] # Right Elbow
+    out[:, 15] = hsc_joints[:, 16] # Right Wrist
     out[:, 16] = thorax
 
     return out if is_batched else out[0]
