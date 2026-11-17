@@ -113,6 +113,24 @@ def apply_punch_depth_prior(refined_xyz: np.ndarray) -> np.ndarray:
     return output
 
 
+class TemporalDepthSmoother:
+    def __init__(self, alpha: float = 0.35) -> None:
+        self.alpha = alpha
+        self.previous_z: np.ndarray | None = None
+
+    def update(self, refined_xyz: np.ndarray) -> np.ndarray:
+        output = refined_xyz.copy()
+        if self.previous_z is None:
+            smoothed_z = output[:, 2].copy()
+        else:
+            smoothed_z = (
+                self.alpha * output[:, 2] + (1.0 - self.alpha) * self.previous_z
+            )
+        self.previous_z = smoothed_z.copy()
+        output[:, 2] = smoothed_z
+        return output
+
+
 def draw_2d_overlay(frame: np.ndarray, image_common17: np.ndarray | None) -> np.ndarray:
     output = frame.copy()
     if image_common17 is None:
@@ -325,6 +343,7 @@ def run(args: argparse.Namespace) -> int:
 
     predictions: list[np.ndarray] = []
     valid: list[bool] = []
+    depth_smoother = TemporalDepthSmoother()
     with mp.solutions.pose.Pose(
         static_image_mode=False,
         model_complexity=args.model_complexity,
@@ -344,6 +363,8 @@ def run(args: argparse.Namespace) -> int:
             refined = refine_pose(model, common17) if common17 is not None else None
             if refined is not None and not args.no_punch_depth_prior:
                 refined = apply_punch_depth_prior(refined)
+            if refined is not None:
+                refined = depth_smoother.update(refined)
             if refined is None:
                 predictions.append(np.full((17, 3), np.nan, dtype=np.float32))
                 valid.append(False)

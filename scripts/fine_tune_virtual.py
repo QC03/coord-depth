@@ -25,6 +25,7 @@ from skills.joint_topology.joint_mapping import align_mediapipe_joints  # noqa: 
 VIRTUAL_TO_COMMON = {0: 9, 1: 8, 2: 13, 3: 14, 4: 15, 5: 10, 6: 11, 7: 12, 8: 0}
 SUPERVISED_JOINTS = tuple(VIRTUAL_TO_COMMON.values())
 WRIST_JOINTS = (12, 15)
+DEFAULT_WRIST_WEIGHT = 4.0
 
 
 def load_clip(name: str, root: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -81,12 +82,13 @@ def virtual_loss(
     pred_z: torch.Tensor,
     inputs: torch.Tensor,
     target_xyz: torch.Tensor,
+    wrist_weight: float = DEFAULT_WRIST_WEIGHT,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     target_z = target_xyz[:, :, 2]
     valid = torch.isfinite(target_z)
     errors = torch.abs(pred_z[:, :, 0] - torch.nan_to_num(target_z))
     joint_weights = torch.ones_like(errors)
-    joint_weights[:, list(WRIST_JOINTS)] = 2.0
+    joint_weights[:, list(WRIST_JOINTS)] = wrist_weight
     z_loss = (errors * joint_weights * valid).sum() / (joint_weights * valid).sum().clamp_min(1.0)
 
     arm_pairs = ((10, 11), (11, 12), (13, 14), (14, 15))
@@ -116,6 +118,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--wrist-weight", type=float, default=DEFAULT_WRIST_WEIGHT)
     parser.add_argument(
         "--all-data",
         action="store_true",
@@ -167,14 +170,16 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
         for inputs, targets in train_loader:
             optimizer.zero_grad(set_to_none=True)
             pred_z = inputs[:, :, 2:3] + model(inputs)
-            loss, _ = virtual_loss(pred_z, inputs, targets)
+            loss, _ = virtual_loss(pred_z, inputs, targets, args.wrist_weight)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
         model.eval()
         with torch.no_grad():
             pred_z = eval_inputs[:, :, 2:3] + model(eval_inputs)
-            val_loss, val_z_loss = virtual_loss(pred_z, eval_inputs, eval_targets)
+            val_loss, val_z_loss = virtual_loss(
+                pred_z, eval_inputs, eval_targets, args.wrist_weight
+            )
         print(
             f"epoch={epoch:02d} val_loss={val_loss.item():.6f} "
             f"val_z_mae_mm={val_z_loss.item() * 1000:.3f}",
@@ -189,6 +194,7 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
             "train_clips": train_names,
             "validation_clips": validation_names,
             "all_data": args.all_data,
+            "wrist_weight": args.wrist_weight,
             "baseline_virtual_z_mae_mm": baseline_mae.item() * 1000,
             "config": {
                 key: str(value) if isinstance(value, Path) else value

@@ -133,4 +133,8 @@ NPZ의 `refined_xyz` 형상은 `(frames,17,3)`이며 좌표는 `[X_mp, Y_mp, Z_r
 
 복싱 잽/스트레이트처럼 팔꿈치-손목의 XY 투영이 급격히 짧아지는 경우에는 추론 단계의 손목 전방 prior를 적용합니다. 가상 정답 좌표에서 측정한 전완/상완 길이 비율(1.008)을 바탕으로, 팔꿈치-손목 XY 거리가 상완 길이의 60% 미만이면 목표 전완 길이를 상완의 109%로 잡아 손목을 카메라 방향(-Z)으로 더 과감하게 보정합니다. 손목이 이미 팔꿈치보다 충분히 앞이면 변경하지 않으며, 기존 체크포인트와 XY 좌표는 변경하지 않습니다. 비교가 필요하면 `--no-punch-depth-prior`로 끌 수 있습니다.
 
-전체 가상데이터(12개 클립, 468 프레임)로 학습하려면 `python scripts\fine_tune_virtual.py --all-data --checkpoint checkpoints\best_model.pth --output checkpoints\virtual_finetuned_all.pth`를 사용합니다. 이번 실행의 가상 전체 데이터 Z-MAE는 73.00→46.60 mm였지만, s03 Z-MAE는 67.25 mm로 확인되어 이 체크포인트도 기본 추론 모델로 자동 교체하지 않습니다.
+추론 Z는 프레임 간 EMA(alpha=0.35)로 평활화하여 손목 깊이 보정이 갑자기 튀지 않도록 합니다. XY는 MediaPipe 원본을 그대로 유지하며 평활화하지 않습니다.
+
+전체 가상데이터(12개 클립, 468 프레임)로 학습하려면 `python scripts\fine_tune_virtual.py --all-data --wrist-weight 4.0 --checkpoint checkpoints\best_model.pth --output checkpoints\virtual_finetuned_all.pth`를 사용합니다. 손목 Z 손실 가중치는 4.0입니다.
+
+요청에 따라 이번에는 기존 모델을 `checkpoints\best_model_pre_virtual.pth`로 백업한 뒤, 전체 가상데이터와 손목 가중치 4.0으로 파인튜닝한 결과를 `checkpoints\best_model.pth`에 반영했습니다. 가상 학습 Z-MAE는 73.00→48.85 mm였지만, s03 전체 Z-MAE는 49.51→66.36 mm, 손목 Z-MAE는 88.88→122.29 mm로 악화되어 가상-실사 도메인 갭이 확인됩니다. 실사 품질이 우선이면 백업 모델을 복원해야 합니다.
