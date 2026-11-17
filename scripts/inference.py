@@ -29,6 +29,10 @@ JOINT_COLORS = {
     "other": (0, 180, 0),       # green (BGR)
 }
 
+# Calibrated from train/virtualData: forearm/upper-arm length ~= 1.008.
+PUNCH_XY_COMPRESSION_RATIO = 0.60
+PUNCH_FOREARM_LENGTH_RATIO = 1.09
+
 
 def joint_color(index: int) -> tuple[int, int, int]:
     if index == 9:
@@ -93,10 +97,13 @@ def apply_punch_depth_prior(refined_xyz: np.ndarray) -> np.ndarray:
         upper_arm = output[shoulder] - output[elbow]
         upper_arm_length = float(np.linalg.norm(upper_arm))
         xy_distance = float(np.linalg.norm(output[elbow, :2] - output[wrist, :2]))
-        if upper_arm_length < 1e-4 or xy_distance >= upper_arm_length * 0.45:
+        if (
+            upper_arm_length < 1e-4
+            or xy_distance >= upper_arm_length * PUNCH_XY_COMPRESSION_RATIO
+        ):
             continue
 
-        target_forearm = upper_arm_length * 0.95
+        target_forearm = upper_arm_length * PUNCH_FOREARM_LENGTH_RATIO
         required_depth_gap = float(
             np.sqrt(max(0.0, target_forearm * target_forearm - xy_distance * xy_distance))
         )

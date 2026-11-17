@@ -116,6 +116,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--all-data",
+        action="store_true",
+        help="Train on every virtual clip instead of holding out Jab15 and straight15",
+    )
     return parser.parse_args()
 
 
@@ -127,10 +132,14 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
     names = sorted(path.stem for path in (virtual_root / "videos").glob("*.mp4"))
     if len(names) < 3:
         raise RuntimeError("Virtual dataset needs at least three clips")
-    validation_names = [name for name in names if name in {"Jab15", "straight15"}]
-    train_names = [name for name in names if name not in validation_names]
+    validation_names = [] if args.all_data else [
+        name for name in names if name in {"Jab15", "straight15"}
+    ]
+    train_names = names if args.all_data else [
+        name for name in names if name not in validation_names
+    ]
     train_x, train_y = load_dataset(train_names, virtual_root)
-    val_x, val_y = load_dataset(validation_names, virtual_root)
+    val_x, val_y = load_dataset(validation_names, virtual_root) if validation_names else (None, None)
 
     model = ZResidualMLP()
     state = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
@@ -141,13 +150,16 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
         batch_size=args.batch_size,
         shuffle=True,
     )
-    val_inputs = torch.from_numpy(val_x)
-    val_targets = torch.from_numpy(val_y)
+    eval_x, eval_y = (
+        (val_x, val_y) if val_x is not None else (train_x, train_y)
+    )
+    eval_inputs = torch.from_numpy(eval_x)
+    eval_targets = torch.from_numpy(eval_y)
     with torch.no_grad():
-        baseline = val_inputs[:, :, 2:3]
-        valid = torch.isfinite(val_targets[:, :, 2])
+        baseline = eval_inputs[:, :, 2:3]
+        valid = torch.isfinite(eval_targets[:, :, 2])
         baseline_mae = (
-            torch.abs(baseline[:, :, 0] - torch.nan_to_num(val_targets[:, :, 2])) * valid
+            torch.abs(baseline[:, :, 0] - torch.nan_to_num(eval_targets[:, :, 2])) * valid
         ).sum() / valid.sum()
 
     for epoch in range(1, args.epochs + 1):
@@ -161,8 +173,8 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
             optimizer.step()
         model.eval()
         with torch.no_grad():
-            pred_z = val_inputs[:, :, 2:3] + model(val_inputs)
-            val_loss, val_z_loss = virtual_loss(pred_z, val_inputs, val_targets)
+            pred_z = eval_inputs[:, :, 2:3] + model(eval_inputs)
+            val_loss, val_z_loss = virtual_loss(pred_z, eval_inputs, eval_targets)
         print(
             f"epoch={epoch:02d} val_loss={val_loss.item():.6f} "
             f"val_z_mae_mm={val_z_loss.item() * 1000:.3f}",
@@ -176,6 +188,7 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
             "source_checkpoint": str(args.checkpoint),
             "train_clips": train_names,
             "validation_clips": validation_names,
+            "all_data": args.all_data,
             "baseline_virtual_z_mae_mm": baseline_mae.item() * 1000,
             "config": {
                 key: str(value) if isinstance(value, Path) else value
@@ -188,7 +201,7 @@ def run(args: argparse.Namespace) -> dict[str, float | int | str]:
         "baseline_virtual_z_mae_mm": baseline_mae.item() * 1000,
         "output": str(args.output),
         "train_frames": len(train_x),
-        "validation_frames": len(val_x),
+        "validation_frames": len(val_x) if val_x is not None else 0,
     }
 
 
