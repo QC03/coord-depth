@@ -105,3 +105,20 @@ python scripts\evaluate_s06.py --checkpoint checkpoints\best_model.pth --results
 ```
 
 전체 s06의 baseline/refined Z-MAE와 개선율은 `results\s06_metrics.json`, 대표 3D 비교 플롯은 `results\visualizations\s06_skeleton_comparison.png`에 생성됩니다.
+
+## 신규 MP4 / 웹캠 추론
+
+화면에는 MediaPipe XY 오버레이, refined 3D skeleton, 그리고 depth 확인용 Z-Y축/Z-X축 projection이 2x2로 표시됩니다. `q` 또는 `Esc`로 종료할 수 있습니다. `--output-video`에도 같은 2x2 화면이 저장됩니다.
+
+```powershell
+python scripts\inference.py --input path\to\new_video.mp4
+python scripts\inference.py --webcam 0
+```
+
+결과 영상을 저장하거나 화면 없이 3D 좌표를 NPZ로 저장하려면 다음 옵션을 추가합니다.
+
+```powershell
+python scripts\inference.py --input path\to\new_video.mp4 --output-video results\annotated.mp4 --output-npz results\pose_3d.npz
+```
+
+NPZ의 `refined_xyz` 형상은 `(frames,17,3)`이며 좌표는 `[X_mp, Y_mp, Z_refined]`(미터), `valid_mask`는 MediaPipe 검출 성공 여부입니다.
