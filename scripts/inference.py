@@ -86,6 +86,26 @@ def refine_pose(model: ZResidualMLP, common17: np.ndarray) -> np.ndarray:
     return np.concatenate((common17[:, :2], refined_z.numpy()[0]), axis=-1)
 
 
+def apply_punch_depth_prior(refined_xyz: np.ndarray) -> np.ndarray:
+    """Move compressed wrists toward the camera while preserving forearm length."""
+    output = refined_xyz.copy()
+    for shoulder, elbow, wrist in ((13, 14, 15), (10, 11, 12)):
+        upper_arm = output[shoulder] - output[elbow]
+        upper_arm_length = float(np.linalg.norm(upper_arm))
+        xy_distance = float(np.linalg.norm(output[elbow, :2] - output[wrist, :2]))
+        if upper_arm_length < 1e-4 or xy_distance >= upper_arm_length * 0.45:
+            continue
+
+        target_forearm = upper_arm_length * 0.95
+        required_depth_gap = float(
+            np.sqrt(max(0.0, target_forearm * target_forearm - xy_distance * xy_distance))
+        )
+        desired_wrist_z = output[elbow, 2] - required_depth_gap
+        if output[wrist, 2] > desired_wrist_z:
+            output[wrist, 2] = desired_wrist_z
+    return output
+
+
 def draw_2d_overlay(frame: np.ndarray, image_common17: np.ndarray | None) -> np.ndarray:
     output = frame.copy()
     if image_common17 is None:
@@ -256,6 +276,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-complexity", type=int, choices=[0, 1, 2], default=1)
     parser.add_argument("--max-frames", type=int, default=0, help="0 means all frames")
     parser.add_argument("--no-display", action="store_true")
+    parser.add_argument(
+        "--no-punch-depth-prior",
+        action="store_true",
+        help="Disable wrist-forward correction for strongly foreshortened forearms",
+    )
     return parser.parse_args()
 
 
@@ -310,6 +335,8 @@ def run(args: argparse.Namespace) -> int:
             common17 = detection[0] if detection is not None else None
             image_common17 = detection[1] if detection is not None else None
             refined = refine_pose(model, common17) if common17 is not None else None
+            if refined is not None and not args.no_punch_depth_prior:
+                refined = apply_punch_depth_prior(refined)
             if refined is None:
                 predictions.append(np.full((17, 3), np.nan, dtype=np.float32))
                 valid.append(False)
