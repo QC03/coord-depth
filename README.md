@@ -108,7 +108,7 @@ python scripts\evaluate_s06.py --checkpoint checkpoints\best_model.pth --results
 
 ## 신규 MP4 / 웹캠 추론
 
-화면에는 MediaPipe XY 오버레이, refined 3D skeleton, 그리고 depth 확인용 Z-Y축/Z-X축 projection이 2x2로 표시됩니다. `q` 또는 `Esc`로 종료할 수 있습니다. `--output-video`에도 같은 2x2 화면이 저장됩니다.
+화면은 전체화면 2x2로 표시됩니다: 원본 영상 위 MediaPipe 스켈레톤, X-Y 스켈레톤, Z-Y 스켈레톤, X-Z 스켈레톤 순서입니다. X-Y/Z-Y는 프로젝트 좌표계의 +Y(아래)를 화면 아래로 표시하고, X-Z는 +Z(전방)를 화면 위로 표시합니다. 원본 패널의 점과 연결선은 영상 좌표에 직접 맞춰 그려집니다. `q` 또는 `Esc`로 종료할 수 있으며, `--output-video`에도 같은 2x2 화면이 저장됩니다.
 
 ```powershell
 python scripts\inference.py --input path\to\new_video.mp4

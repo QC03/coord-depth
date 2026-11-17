@@ -62,15 +62,21 @@ def load_model(checkpoint_path: Path) -> ZResidualMLP:
 
 def detect_common17(
     pose: mp.solutions.pose.Pose, frame: np.ndarray
-) -> np.ndarray | None:
+) -> tuple[np.ndarray, np.ndarray] | None:
     result = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    if result.pose_world_landmarks is None:
+    if result.pose_world_landmarks is None or result.pose_landmarks is None:
         return None
     world = np.asarray(
         [[point.x, point.y, point.z] for point in result.pose_world_landmarks.landmark],
         dtype=np.float32,
     )
-    return normalize_root_relative(align_mediapipe_joints(world)).astype(np.float32)
+    image = np.asarray(
+        [[point.x, point.y, point.z] for point in result.pose_landmarks.landmark],
+        dtype=np.float32,
+    )
+    common_world = normalize_root_relative(align_mediapipe_joints(world)).astype(np.float32)
+    common_image = align_mediapipe_joints(image).astype(np.float32)
+    return common_world, common_image
 
 
 def refine_pose(model: ZResidualMLP, common17: np.ndarray) -> np.ndarray:
@@ -80,9 +86,9 @@ def refine_pose(model: ZResidualMLP, common17: np.ndarray) -> np.ndarray:
     return np.concatenate((common17[:, :2], refined_z.numpy()[0]), axis=-1)
 
 
-def draw_2d_overlay(frame: np.ndarray, common17: np.ndarray | None) -> np.ndarray:
+def draw_2d_overlay(frame: np.ndarray, image_common17: np.ndarray | None) -> np.ndarray:
     output = frame.copy()
-    if common17 is None:
+    if image_common17 is None:
         cv2.putText(
             output,
             "Pose not detected",
@@ -96,16 +102,16 @@ def draw_2d_overlay(frame: np.ndarray, common17: np.ndarray | None) -> np.ndarra
         return output
     height, width = output.shape[:2]
     points = {}
-    for index, (x, y, _) in enumerate(common17):
-        px = int(width * (0.5 + float(x) * 0.8))
-        py = int(height * (0.5 + float(y) * 0.8))
+    for index, (x, y, _) in enumerate(image_common17):
+        px = int(np.clip(float(x), 0.0, 1.0) * (width - 1))
+        py = int(np.clip(float(y), 0.0, 1.0) * (height - 1))
         points[index] = (px, py)
         cv2.circle(output, (px, py), 4, joint_color(index), -1)
     for left, right in get_skeleton_edges():
         cv2.line(output, points[left], points[right], edge_color(left, right), 2)
     cv2.putText(
         output,
-        "MediaPipe XY (fixed) + refined Z",
+        "Original + MediaPipe skeleton (XY fixed)",
         (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.7,
@@ -175,6 +181,7 @@ def draw_axis_projection(
     title: str,
     horizontal_label: str,
     vertical_label: str,
+    invert_vertical: bool = True,
 ) -> None:
     if refined_xyz is None:
         cv2.putText(
@@ -195,9 +202,10 @@ def draw_axis_projection(
     center_y = origin_y + panel_height // 2
     projected: dict[int, tuple[int, int]] = {}
     for index, (horizontal, vertical) in enumerate(values):
+        screen_vertical = -float(vertical) if invert_vertical else float(vertical)
         projected[index] = (
             int(center_x + float(horizontal) * scale),
-            int(center_y - float(vertical) * scale),
+            int(center_y + screen_vertical * scale),
         )
     for left, right in get_skeleton_edges():
         cv2.line(canvas, projected[left], projected[right], edge_color(left, right), 2)
@@ -276,6 +284,13 @@ def run(args: argparse.Namespace) -> int:
             capture.release()
             raise RuntimeError(f"Unable to create output video: {args.output_video}")
 
+    window_name = "MediaPipe XY + Refined Z Pose (2x2)"
+    if not args.no_display:
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty(
+            window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
+        )
+
     predictions: list[np.ndarray] = []
     valid: list[bool] = []
     with mp.solutions.pose.Pose(
@@ -291,7 +306,9 @@ def run(args: argparse.Namespace) -> int:
             ok, frame = capture.read()
             if not ok or (args.max_frames and frame_index >= args.max_frames):
                 break
-            common17 = detect_common17(pose, frame)
+            detection = detect_common17(pose, frame)
+            common17 = detection[0] if detection is not None else None
+            image_common17 = detection[1] if detection is not None else None
             refined = refine_pose(model, common17) if common17 is not None else None
             if refined is None:
                 predictions.append(np.full((17, 3), np.nan, dtype=np.float32))
@@ -300,16 +317,22 @@ def run(args: argparse.Namespace) -> int:
                 predictions.append(refined)
                 valid.append(True)
             if not args.no_display or writer is not None:
-                display = draw_2d_overlay(frame, common17)
+                display = draw_2d_overlay(frame, image_common17)
                 canvas = np.zeros((input_height * 2, input_width * 2, 3), dtype=np.uint8)
                 canvas[:input_height, :input_width] = display
-                draw_3d_skeleton(
+                draw_axis_projection(
                     canvas,
                     refined,
+                    0,
+                    1,
                     input_width,
                     0,
                     input_width,
                     input_height,
+                    "Skeleton X-Y",
+                    "X",
+                    "Y",
+                    False,
                 )
                 draw_axis_projection(
                     canvas,
@@ -320,27 +343,29 @@ def run(args: argparse.Namespace) -> int:
                     input_height,
                     input_width,
                     input_height,
-                    "Depth profile Z-Y",
+                    "Skeleton Z-Y",
                     "Z",
                     "Y",
+                    False,
                 )
                 draw_axis_projection(
                     canvas,
                     refined,
-                    2,
                     0,
+                    2,
                     input_width,
                     input_height,
                     input_width,
                     input_height,
-                    "Depth profile Z-X",
-                    "Z",
+                    "Skeleton X-Z",
                     "X",
+                    "Z",
+                    True,
                 )
                 if writer is not None:
                     writer.write(canvas)
                 if not args.no_display:
-                    cv2.imshow("MediaPipe XY + Refined Z 3D Pose", canvas)
+                    cv2.imshow(window_name, canvas)
                     key = cv2.waitKey(1) & 0xFF
                     if key in (27, ord("q")):
                         break
